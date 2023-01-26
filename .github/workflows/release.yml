@@ -1,0 +1,19 @@
+name: Create Release
+# Create GitHub release
+# Runs on semantic versioned tags only
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+jobs:
+  publish:
+    name: Publish Helm Chart
+    uses: ./.github/workflows/publish.yml
+  release:
+    runs-on: ubuntu-latest
+    name: Create GitHub Release
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1

@@ -1,0 +1,134 @@
+# Default values for static-site.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  # Default tag is `alpine`
+  tag: ""
+
+init:
+  # Clone/copy method.
+  # git, wget, s3
+  method: git
+  # git options
+  git:
+    image:
+      repository: alpine/git
+      pullPolicy: IfNotPresent
+      # Default tag is `latest`
+      tag: ""
+    # The repository to clone
+    repository: ""
+    # The reference of the repository to clone
+    ref: ""
+    # Sub Path of repository to copy if not root
+    subPath: ""
+  # wget options
+  wget:
+    image:
+      repository: busybox
+      pullPolicy: IfNotPresent
+      # Default tag is `musl`
+      tag: ""
+    url: ""
+    # Filename to save URL as for extraction. Saved under /tmp
+    # Also gets set to env TARGET_FILE
+    targetFile: "static.tar"
+    # Extract command, targeting /static
+    extractCommand: "tar xvf /tmp/$TARGET_FILE -C /static"
+  # s3 options
+  s3:
+    # You will need to attach a service account with appropriate permissions
+    # to AWS S3 via serviceAccount.name
+    image:
+      repository: amazon/aws-cli
+      pullPolicy: IfNotPresent
+      # Default tag is `latest`
+      tag: ""
+    bucket: ""
+    object: ""
+    # Filename to save object as for extraction. Saved under /tmp
+    # Also gets set to env TARGET_FILE
+    targetFile: "static.tar"
+    # Extract command, targeting /static
+    extractCommand: "tar xvf /tmp/$TARGET_FILE -C /static"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+
+ambassador:
+  enabled: false
+  apiVersion: getambassador.io/v2
+  hostname: ""
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

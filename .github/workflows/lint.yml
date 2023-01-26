@@ -1,0 +1,37 @@
+name: helmlint
+
+on: pull_request
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+            fetch-depth: 1
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            helmlint:
+              - 'charts/static-site/**.yaml'
+              - 'charts/static-site/templates/**.tpl'
+      - name: Set up Helm
+        if: steps.filter.outputs.helmlint == 'true'
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.9.2
+
+      - name: Set up chart-testing
+        if: steps.filter.outputs.helmlint == 'true'
+        uses: helm/chart-testing-action@v2.2.1
+
+      - name: Run chart-testing (lint)
+        if: steps.filter.outputs.helmlint == 'true'
+        run: ct lint --config ct.yaml
+
+      - name: Helm Template Test
+        if: steps.filter.outputs.helmlint == 'true'
+        run: |
+          helm template testtemplate charts/static-site

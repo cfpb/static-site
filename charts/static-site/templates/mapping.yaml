@@ -1,0 +1,14 @@
+{{- if .Values.ambassador.enabled }}
+{{- $fullName := include "static-site.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+apiVersion: {{ .Values.ambassador.apiVersion | default "getambassador.io/v2" }}
+kind: Mapping
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "static-site.labels" . | nindent 4 }}
+spec:
+  host: {{ .Values.ambassador.hostname }}
+  prefix: /
+  service: {{ $fullName }}:{{ $svcPort }}
+{{- end }}

@@ -1,0 +1,33 @@
+name: Publish Helm Chart
+
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    name: Publish Helm Chart
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Install Helm
+        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Build Helm Chart
+        run: helm package ./charts/static-site
+
+      - name: GitHub Container Registry Login
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+
+      - name: Publish Helm Chart to GitHub Container Registry
+        run: |
+          CHART_NAME=$(echo "${GITHUB_REPOSITORY#*/}" | sed -e 's,.*/\(.*\),\1,')
+          CHART_VERSION=$(grep 'version:' ./charts/$CHART_NAME/Chart.yaml | tail -n1 | awk '{ print $2}')
+          # Change all uppercase to lowercase
+          CHART_NAME=$(echo $CHART_NAME | tr '[A-Z]' '[a-z]')
+          helm push ${CHART_NAME}-${CHART_VERSION}.tgz oci://ghcr.io/${GITHUB_REPOSITORY%/*}

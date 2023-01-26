@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "static-site.fullname" . }}
+  labels:
+    {{- include "static-site.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "static-site.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "static-site.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "static-site.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: init-clone
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if eq .Values.init.method "git" }}
+          image: "{{ .Values.init.git.image.repository}}:{{ .Values.init.git.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.init.git.image.pullPolicy }}
+          command:
+          - /bin/ash
+          args:
+            - -c
+            - |
+              {{- if .Values.init.git.ref }}
+              git clone --depth 1 -b \
+              {{ .Values.init.git.ref }} {{ .Values.init.git.repository }} /tmp/repo \
+              {{- else }}
+              git clone --depth 1 {{ .Values.init.git.repository }} /tmp/repo \
+              {{- end }}
+              && cp -Rfp /tmp/repo/{{ .Values.init.git.subPath | default "" }}/* /static
+          {{- else if eq .Values.init.method "wget" }}
+          image: "{{ .Values.init.wget.image.repository }}:{{ .Values.init.wget.image.tag | default "musl" }}"
+          imagePullPolicy: {{ .Values.init.wget.image.pullPolicy }}
+          env:
+            - name: TARGET_FILE
+              value: {{ .Values.init.wget.targetFile | quote }}
+          command:
+            - /bin/ash
+          args:
+            - -c
+            - |
+              wget -O /tmp/$TARGET_FILE {{ .Values.init.wget.url }} \
+              && {{ .Values.init.wget.extractCommand }}
+          {{- else }}
+          image: "{{ .Values.init.s3.image.repository }}:{{ .Values.init.s3.image.tag | default "latest" }}"
+          imagePullPolicy: {{ .Values.init.s3.image.pullPolicy }}
+          env:
+            - name: TARGET_FILE
+              value: {{ .Values.init.s3.targetFile | quote }}
+          command:
+            - /bin/bash
+          args:
+            - -c
+            - |
+              aws s3 cp s3://{{ .Values.init.s3.bucket }}/{{.Values.init.s3.object }} /tmp/$TARGET_FILE \
+              && {{ .Values.init.s3.extractCommand }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /static
+              name: static
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "alpine" }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: static
+      volumes:
+        - name: static
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
