@@ -70,7 +70,7 @@ spec:
           args:
             - -c
             - |
-              aws s3 cp s3://{{ .Values.init.s3.bucket }}/{{.Values.init.s3.object }} /tmp/$TARGET_FILE \
+              aws s3 cp {{ .Values.init.s3.copyOptions }} s3://{{ .Values.init.s3.bucket }}/{{.Values.init.s3.object }} /tmp/$TARGET_FILE \
               && {{ .Values.init.s3.extractCommand }}
           {{- end }}
           volumeMounts:

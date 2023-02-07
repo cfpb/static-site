@@ -49,6 +49,8 @@ init:
       pullPolicy: IfNotPresent
       # Default tag is `latest`
       tag: ""
+    # Options/arguments for aws s3 cp command
+    copyOptions: ""
     bucket: ""
     object: ""
     # Filename to save object as for extraction. Saved under /tmp
